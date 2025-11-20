@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-import psycopg2
+import psycopg
 import os
 from urllib.parse import urlparse
 
@@ -9,21 +9,25 @@ app = Flask(__name__)
 # Подключение к БД
 def get_db_connection():
     DATABASE_URL = os.environ.get('DATABASE_URL')
-    if DATABASE_URL:
-        try:
-            url = urlparse(DATABASE_URL)
-            conn = psycopg2.connect(
-                database=url.path[1:],
-                user=url.username,
-                password=url.password,
-                host=url.hostname,
-                port=url.port
-            )
-            return conn
-        except Exception as e:
-            print(f"Database connection error: {e}")
-            return None
-    return None
+    if not DATABASE_URL:
+        print("DATABASE_URL not provided")
+        return None
+
+    try:
+        url = urlparse(DATABASE_URL)
+
+        conn = psycopg.connect(
+            dbname=url.path.lstrip('/'),
+            user=url.username,
+            password=url.password,
+            host=url.hostname,
+            port=url.port
+        )
+
+        return conn
+    except Exception as e:
+        print(f"Database connection error: {e}")
+        return None
 
 
 # Создание таблицы
@@ -46,7 +50,7 @@ def init_db():
             print(f"Database init error: {e}")
 
 
-# Инициализируем БД при импорте
+# Инициализируем БД
 init_db()
 
 
@@ -103,7 +107,7 @@ def get_messages():
             messages.append({
                 "id": row[0],
                 "text": row[1],
-                "time": str(row[2])
+                "time": row[2].isoformat() if row[2] else None
             })
 
         conn.close()
